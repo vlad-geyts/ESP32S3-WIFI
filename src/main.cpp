@@ -1,9 +1,14 @@
 #include <Arduino.h>
-#include <Preferences.h>
+#include <Preferences.h>  // The Preferences library is unique to Arduino-esp32
+                          // It uses a portion of on-board non-volitile memory
+                          // (NVS) of the ESP32 to store data.
+                          // Preferences data is stored in NVS in sections
+                          // called "namespace". There  are e set of key-value pars.
+                          // LIke variables, a key-value pair has a data type.
 #include <WiFi.h>
-#include <string_view> // C++17 header for high-performance string handling
-                       // Just to data members: a pointer and a length. 
-                       // Does not created a copy in memory. Read-only.
+#include <string_view>    // C++17 header for high-performance string handling
+                          // Just to data members: a pointer and a length. 
+                          // Does not created a copy in memory. Read-only.
 
 // --- Modern C++: Namespaces & Constexpr ---
 // We use a namespace to group related constants. This prevents "LED_PIN" from 
@@ -23,7 +28,12 @@ namespace Config {
 }
 
 // Global Objects
-Preferences prefs;
+constexpr bool RW_MODE = false;
+constexpr bool RO_MODE = true;
+Preferences prefs;          // Created name of the Preferences object. This object is 
+                            // used with the Preferences methods to access the
+                            // name space and the key-value pairs it contains.
+                                    
 SemaphoreHandle_t panicSemaphore;
 
 // Prototypes
@@ -37,13 +47,16 @@ void setup() {
     Serial.begin(115200);
 
     // Initialise NVS and read lifetime count
-    prefs.begin("system", true);
-    // Use 'auto' - C++ deduces this is a uint32_t automatically
-    auto totalPanics = prefs.getUInt("panic_count", 0); 
-    Serial.printf("Bootup - Lifetime Panic Events: %u\n", totalPanics);
-    prefs.end();
+    prefs.begin("system", RO_MODE);     // Open namespace "system" and make it available
+                                        // in READ ONLY (RO) mode.
 
-    initWiFi();
+    // Use 'auto' - C++ deduces this is a uint32_t automatically
+    auto totalPanics = prefs.getUInt("panic_count", 0);   // Retrive value of the "panic_count" 
+                                                          // key, define to 0 if not found
+    Serial.printf("Bootup - Lifetime Panic Events: %u\n", totalPanics);
+    prefs.end(); // Close our preference namespace.
+
+    initWiFi();  // Function call to inirialze WiFi connetion logic
 
     panicSemaphore = xSemaphoreCreateBinary();
 
@@ -99,7 +112,7 @@ void panicTask(void* pvParameters) {
             digitalWrite(Config::PanicPin, HIGH);
 
             // Increment Persistence
-            prefs.begin("system", false);
+            prefs.begin("system", RW_MODE);
             auto count = prefs.getUInt("panic_count", 0) + 1;
             prefs.putUInt("panic_count", count);
             prefs.end();

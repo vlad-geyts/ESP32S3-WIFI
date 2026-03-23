@@ -56,8 +56,10 @@ void setup() {
     Serial.printf("Bootup - Lifetime Panic Events: %u\n", totalPanics);
     prefs.end(); // Close our preference namespace.
 
-    initWiFi();  // Function call to inirialze WiFi connetion logic
+    // Initialize WiFi connection logic
+    initWiFi();
 
+    // Create binary semaphore
     panicSemaphore = xSemaphoreCreateBinary();
 
     // Pin Configurations using our new Namespace

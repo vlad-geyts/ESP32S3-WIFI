@@ -42,6 +42,31 @@ void panicTask(void* pvParameters);
 void heartbeatTask(void* pvParameters);
 void initWiFi(); // New function for Phase 5
 
+// When you use the Arduino framework on an ESP32, the system automatically 
+// creates a task called the "Arduino Loop Task."
+// Core Assignment: By default, this task is pinned to Core 1.
+// Execution:
+//   1. The task starts and calls  setup() function once.
+//   2. Then, it enters an infinite loop that calls your loop() function repeatedly.
+//   3. Because vTaskDelete(NULL) called at the end of setup(), we 
+//      effectively "killed" the Arduino Loop Task. This is why we don't care 
+//      about assigning loop() to a core—it literally ceases to exist before it ever starts
+// Since initWiFi() is called inside setup(), it "borrows" the context of the Arduino Loop Task.
+// Current Core: It is running on Core 1
+// Blocking:
+//    While initWiFi() is looping (while (status != WL_CONNECTED)), it is blocking Core 1 
+//    from doing anything else in that specific task. However, since we've created 
+//    heartbeatTask on Core 0, the LED keeps blinking perfectly while the WiFi connects. 
+//    This is the power of your dual-core setup!
+// Should we assign setup() and iniWiFi() to a core?
+//    For setup(), we don't need to. The system does it for yus. However, for a "Senior" 
+//    implementation, we usually care about where the WiFi Stack itself is running.
+//    The WiFi Stack: 
+//         On the ESP32, the internal WiFi and TCP/IP stack (LwIP) usually runs on Core 0.
+//         By putting your panicTask (critical real-time) on Core 1 and your heartbeatTask 
+//         on Core 0, we have made a smart choice. ou've isolated your time-critical interrupt 
+//         logic (Core 1) away from the heavy lifting of the WiFi/Network processing (Core 0).
+
 void setup() {
     delay(1000);
     Serial.begin(115200);
